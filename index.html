@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arma Roulette 3D – Todos contra todos</title>
+<style>
+:root{--fg:#fff;--bg:#0b1020;--hud:rgba(10,14,30,.62);--ac:#ffcf40;color-scheme:dark}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--fg:#fff;--bg:#0b1020}}
+:root[data-theme="dark"]{--fg:#fff;--bg:#0b1020}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:600 14px system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.h{position:fixed;background:var(--hud);border-radius:10px;padding:8px 12px;pointer-events:none}
+#sb{top:max(10px,env(safe-area-inset-top));right:10px;min-width:150px;font-size:12px}
+#feed{top:max(10px,env(safe-area-inset-top));left:10px;font-size:12px;background:none;padding:0}
+#feed div{background:var(--hud);margin-bottom:4px;padding:4px 8px;border-radius:6px}
+#st{bottom:max(14px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);text-align:center;min-width:190px}
+#hpw{height:8px;background:#fff3;border-radius:4px;margin-top:6px;overflow:hidden}
+#hp{height:100%;width:100%;background:#4ade80}
+#cross{position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px;border:2px solid #fff;border-radius:50%;opacity:.7;pointer-events:none}
+#msg{position:fixed;top:38%;width:100%;text-align:center;font-size:26px;text-shadow:0 2px 8px #000;pointer-events:none}
+#fl{position:fixed;inset:0;background:#f00;opacity:0;pointer-events:none;transition:opacity .25s}
+#start{position:fixed;inset:0;background:#0b1020e6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px}
+#start h1{margin:0;font-size:28px}
+#start p{max-width:420px;margin:0;opacity:.85;line-height:1.5}
+input,button{font:inherit;border-radius:10px;border:0;padding:10px 16px}
+button{background:var(--ac);color:#111;cursor:pointer}
+.t{position:fixed;bottom:max(18px,env(safe-area-inset-bottom));width:70px;height:70px;border-radius:50%;display:none;align-items:center;justify-content:center;background:#fff3;border:2px solid #fff8}
+#fb{right:20px}#jb{right:20px;bottom:max(100px,calc(env(safe-area-inset-bottom) + 84px));width:56px;height:56px}
+#ab{right:104px;width:62px;height:62px;font-size:11px}
+#pb{position:fixed;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:none;background:var(--hud);color:var(--fg);z-index:5;padding:6px 14px}
+.scr{display:none;flex-direction:column;align-items:center;gap:12px;width:100%}
+#rooms{width:min(360px,100%);max-height:40vh;overflow:auto;touch-action:pan-y;display:flex;flex-direction:column;gap:8px}
+.rm{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fff1;border-radius:10px;padding:8px 12px}
+.sec{background:#fff2;color:var(--fg)}
+#pz{position:fixed;inset:0;background:#0b1020d9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:6}
+#spw{height:6px;background:#fff3;border-radius:4px;margin-top:4px;overflow:hidden}#sp{height:100%;width:100%;background:#38bdf8}
+#rb{right:90px;bottom:max(96px,calc(env(safe-area-inset-bottom) + 80px));width:56px;height:56px;font-size:10px}
+#cf{position:fixed;inset:0;background:#0b1020f2;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:8;padding:20px;text-align:center}
+#eb{position:fixed;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:none;z-index:9;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;width:max-content;max-width:94vw;background:var(--hud);padding:8px 12px;border-radius:10px}
+.ed #eb{display:flex}.ed .t{display:flex!important;outline:2px dashed var(--ac);cursor:grab;touch-action:none}
+.ed #start,.ed #pz,.ed #cf,.ed #pb,.ed #tb{display:none!important}
+.t{touch-action:none}
+#tt{position:fixed;inset:0;margin:auto;width:min(420px,92vw);height:fit-content;max-height:80vh;overflow:auto;background:#0b1020e6;border-radius:12px;padding:14px;display:none;flex-direction:column;z-index:4;pointer-events:none}
+#tt h2{margin:0 0 8px;font-size:16px}#tt table{width:100%;border-collapse:collapse;font-size:13px}#tt td,#tt th{padding:4px 6px;text-align:left}
+#tb{position:fixed;top:calc(max(10px,env(safe-area-inset-top)) + 40px);left:50%;transform:translateX(-50%);display:none;background:var(--hud);color:var(--fg);z-index:5;padding:6px 12px}
+</style></head><body>
+<div id="sb" class="h"></div><div id="feed" class="h"></div>
+<div id="st" class="h"><div id="wep"></div><div id="hpw"><div id="hp"></div></div><div id="spw"><div id="sp"></div></div></div>
+<div id="cross"></div><div id="msg"></div><div id="fl"></div>
+<div class="t" id="fb">FUEGO</div><div class="t" id="jb">SALTO</div><div class="t" id="ab">APUNTAR</div><div class="t" id="rb">CORRER</div>
+<button id="pb">⏸ Pausa</button><button id="tb">🏆 Tabla</button><div id="tt"></div>
+<div id="pz"><h1 style="margin:0">Pausa</h1><p style="margin:0;opacity:.8;font-size:12px">La partida sigue para los demás jugadores</p><button id="rs">Continuar</button><button class="sec cfgb">⚙ Configuración</button><button id="lv" class="sec">Salir de la sala</button></div>
+<div id="cf"><h1 style="margin:0">⚙ Configuración</h1><label>Sensibilidad de la pantalla: <b id="sv"></b></label><input type="range" id="sn" min=".3" max="2.5" step=".05" style="width:min(300px,80vw)"><button id="mv">Mover botones</button><button class="sec" id="cx">Cerrar</button></div>
+<div id="eb"><span>Arrastra los botones</span><button id="ok">Listo</button><button class="sec" id="rp">Restablecer</button></div>
+<div id="start"><h1>🔫 Arma Roulette 3D</h1>
+<p>Todos contra todos online. Cada baja te da un arma nueva: gana quien complete las 8 armas. Todos los que abran este enlace comparten la partida.</p>
+<div class="scr" id="m1" style="display:flex"><input id="nm" maxlength="12" placeholder="Tu nombre de usuario">
+<button id="go">Jugar</button><button class="sec cfgb">⚙ Configuración</button></div>
+<div class="scr" id="m2"><button id="mc">Crear sala</button><button id="ms">Buscar sala</button><button class="sec cfgb">⚙ Configuración</button><button class="sec" data-b="m1">Atrás</button></div>
+<div class="scr" id="m3"><input id="rn" maxlength="20" placeholder="Nombre de la sala"><button id="mk">Crear y entrar</button><button class="sec" data-b="m2">Atrás</button></div>
+<div class="scr" id="m4"><div id="rooms"></div><button class="sec" data-b="m2">Atrás</button></div>
+<p style="font-size:12px">Tab tabla · Mayús / botón CORRER gasta estamina (barra azul) · WASD mover · ratón mirar · clic disparar · Espacio saltar · Mayús correr · flechas para mirar si el ratón no se bloquea. En móvil: joystick izquierdo, arrastra a la derecha para mirar. Apuntar: clic derecho o botón.</p>
+<p id="net" style="font-size:12px"></p></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),V3=THREE.Vector3;
+const W=[{n:"Pistola",d:34,r:380,p:1,s:.005,a:0},{n:"Subfusil",d:12,r:85,p:1,s:.03,a:1},{n:"Escopeta",d:11,r:850,p:8,s:.07,a:0},
+{n:"Rifle de asalto",d:20,r:130,p:1,s:.015,a:1},{n:"Revólver",d:60,r:650,p:1,s:.004,a:0},{n:"Ametralladora",d:15,r:65,p:1,s:.05,a:1},
+{n:"Francotirador",d:100,r:1200,p:1,s:0,a:0},{n:"Láser",d:9,r:40,p:1,s:.01,a:1}];
+const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(innerWidth,innerHeight);document.body.prepend(R.domElement);
+const S=new THREE.Scene();S.background=new THREE.Color(0x7ec8ff);S.fog=new THREE.Fog(0x7ec8ff,30,95);
+const cam=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,200);S.add(cam);
+S.add(new THREE.HemisphereLight(0xffffff,0x445566,1));const sun=new THREE.DirectionalLight(0xffffff,.6);sun.position.set(10,20,5);S.add(sun);
+const fl=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshLambertMaterial({color:0x3d6b4a}));fl.rotation.x=-Math.PI/2;S.add(fl);
+const solids=[],boxes=[];
+function box(x,z,w,d,h,c){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color:c}));m.position.set(x,h/2,z);S.add(m);solids.push(m);boxes.push({x1:x-w/2,x2:x+w/2,z1:z-d/2,z2:z+d/2})}
+box(0,-40,81,1,6,0x555e6e);box(0,40,81,1,6,0x555e6e);box(-40,0,1,81,6,0x555e6e);box(40,0,1,81,6,0x555e6e);
+[[-10,-8,6,6,3],[12,10,5,5,3],[0,0,4,10,4],[-18,14,8,3,3],[20,-15,3,8,4],[-25,-20,5,5,3],[8,-25,7,3,3],[28,20,4,4,3],[-30,25,5,5,4]].forEach((b,i)=>box(b[0],b[1],b[2],b[3],b[4],i%2?0xa5733c:0x8a6a4a));
+const gun=new THREE.Mesh(new THREE.BoxGeometry(.1,.12,.5),new THREE.MeshLambertMaterial({color:0xcccccc}));gun.position.set(.25,-.22,-.5);cam.add(gun);
+const me={e:100,v:0,x:0,y:0,z:0,vy:0,ry:0,rx:0,hp:100,w:0,k:0,dead:0,s:0,lf:0,n:"",c:new THREE.Color().setHSL(Math.random(),.7,.5).getHex()};
+const av={},bots=[],RC=new THREE.Raycaster();let lobby=null,room=null,rname="",playing=0,paused=0,aiming=0,pi=0,mdown=0,hold=0,botsOn=1;
+const keys={};const cl=v=>Math.max(-1.45,Math.min(1.45,v));
+function inBox(x,z,m){return boxes.some(b=>x>b.x1-m&&x<b.x2+m&&z>b.z1-m&&z<b.z2+m)}
+function spawn(){let x,z;do{x=(Math.random()-.5)*70;z=(Math.random()-.5)*70}while(inBox(x,z,1.2));Object.assign(me,{x,z,y:0,vy:0,hp:100,dead:0});$("msg").textContent=""}
+function collide(p){for(const b of boxes){const cx=Math.max(b.x1,Math.min(p.x,b.x2)),cz=Math.max(b.z1,Math.min(p.z,b.z2)),dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);if(d<.45&&d>1e-4){const k=(.45-d)/d;p.x+=dx*k;p.z+=dz*k}}p.x=Math.max(-39.4,Math.min(39.4,p.x));p.z=Math.max(-39.4,Math.min(39.4,p.z))}
+function mk(pid,col){const g=new THREE.Group(),m=new THREE.MeshLambertMaterial({color:col});
+const b=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,1.2,10),m);b.position.y=.6;
+const h=new THREE.Mesh(new THREE.SphereGeometry(.24,10,8),new THREE.MeshLambertMaterial({color:0xf1c9a5}));h.position.y=1.45;h.userData.head=1;
+const gn=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,.6),new THREE.MeshLambertMaterial({color:0x222222}));gn.position.set(.3,1,-.4);
+b.userData.pid=h.userData.pid=pid;g.add(b,h,gn);S.add(g);return{g,b,h,m}}
+for(let i=0;i<3;i++){const a=mk("bot"+i,0x888888);av["bot"+i]=a;bots.push({id:"bot"+i,n:"Bot "+(i+1),a,hp:100,x:0,z:0,tx:0,tz:0,t:0})}
+function rb(b){do{b.x=(Math.random()-.5)*70;b.z=(Math.random()-.5)*70}while(inBox(b.x,b.z,1.2));b.tx=b.x;b.tz=b.z}
+bots.forEach(rb);
+function myId(){const p=room&&room.peers().find(p=>p.sameTab);return p?p.peer:"yo"}
+function nameOf(id){if(id===myId())return me.n;const p=room&&room.peers().find(p=>p.peer===id);return String(p&&p.presence.n||"?").slice(0,14)}
+function feed(t){const d=document.createElement("div");d.textContent=t;$("feed").appendChild(d);setTimeout(()=>d.remove(),5000);while($("feed").children.length>5)$("feed").firstChild.remove()}
+let bt;function banner(t){$("msg").textContent=t;clearTimeout(bt);bt=setTimeout(()=>{if(!me.dead)$("msg").textContent=""},3500)}
+function tracer(a,b){const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0xffee88}));S.add(l);setTimeout(()=>{S.remove(l);l.geometry.dispose()},60)}
+function targets(){const t=solids.slice();for(const id in av){const a=av[id];if(a.g.visible)t.push(a.b,a.h)}return t}
+function fire(){const w=W[me.w],t=performance.now();if(!playing||paused||me.dead||t-me.lf<w.r)return;me.lf=t;me.s++;
+const dm={},sm=aiming?.35:1,o=cam.localToWorld(new V3(.25,-.2,-.6));
+for(let i=0;i<w.p;i++){const d=new V3((Math.random()-.5)*w.s*2*sm,(Math.random()-.5)*w.s*2*sm,-1).applyQuaternion(cam.quaternion).normalize();
+RC.set(cam.position,d);RC.far=90;const h=RC.intersectObjects(targets(),false)[0];
+tracer(o,h?h.point:cam.position.clone().addScaledVector(d,60));
+if(h&&h.object.userData.pid){const id=h.object.userData.pid;dm[id]=(dm[id]||0)+w.d*(h.object.userData.head?1.5:1)}}
+for(const id in dm)hit(id,dm[id])}
+function hit(id,d){if(id.startsWith("bot")){const b=bots.find(b=>b.id===id);if(!b||!botsOn)return;b.hp-=d;const c=b.a.m;c.color.setHex(0xffffff);setTimeout(()=>c.color.setHex(0x888888),80);
+if(b.hp<=0){b.hp=100;rb(b);feed("Eliminaste a "+b.n);gotKill()}}
+else if(room)room.emit("hit",{to:id,dmg:Math.round(d),by:myId()}).catch(()=>{})}
+function gotKill(){me.k++;if(me.w+1>=W.length){me.v++;if(room)room.emit("win",{by:myId()}).catch(()=>{});win(me.n)}else me.w++}
+function win(n){me.w=0;banner("🏆 "+n+" gana la ronda. Todos vuelven a la pistola")}
+function die(by){me.dead=1;me.hp=0;$("msg").textContent="Te eliminó "+nameOf(by)+"…";if(room)room.emit("kill",{by,to:myId()}).catch(()=>{});setTimeout(spawn,3000)}
+function flash(){const f=$("fl");f.style.transition="none";f.style.opacity=.45;requestAnimationFrame(()=>{f.style.transition="opacity .3s";f.style.opacity=0})}
+function setupRoom(){
+room.on("hit",m=>{const d=m.data;if(!d||d.to!==myId()||me.dead||!playing||typeof d.by!=="string")return;me.hp-=Math.max(0,Math.min(160,+d.dmg||0));flash();if(me.hp<=0)die(d.by)});
+room.on("kill",m=>{const d=m.data;if(!d||typeof d.by!=="string"||typeof d.to!=="string")return;feed(nameOf(d.by)+" eliminó a "+nameOf(d.to));if(d.by===myId()&&d.to!==d.by&&playing)gotKill()});
+room.on("win",m=>{const d=m.data;if(d&&typeof d.by==="string"&&d.by!==myId())win(nameOf(d.by))});
+room.onPeers(syncPeers);
+pi=setInterval(()=>{if(playing&&room)room.presence({x:+me.x.toFixed(2),y:+me.y.toFixed(2),z:+me.z.toFixed(2),ry:+me.ry.toFixed(2),p:+me.rx.toFixed(2),w:me.w,hp:me.hp,k:me.k,n:me.n,c:me.c,s:me.s,dead:me.dead,v:me.v}).catch(()=>{})},80);
+}
+function syncPeers(){if(!room)return;const seen=new Set();
+for(const p of room.peers()){if(p.sameTab||p.kind!=="viewer")continue;const q=p.presence;if(typeof q.x!=="number")continue;seen.add(p.peer);
+let a=av[p.peer];if(!a){a=av[p.peer]=mk(p.peer,+q.c||0x888888);a.g.position.set(q.x,q.y||0,q.z)}
+a.g.visible=!q.dead;a.tx=q.x;a.ty=q.y||0;a.tz=q.z;a.g.rotation.y=+q.ry||0;
+if(a.s!==undefined&&q.s!==a.s){const pp=+q.p||0,o=new V3(q.x,(q.y||0)+1.3,q.z),d=new V3(-Math.sin(q.ry)*Math.cos(pp),Math.sin(pp),-Math.cos(q.ry)*Math.cos(pp));tracer(o,o.clone().addScaledVector(d,40))}a.s=q.s}
+for(const id in av)if(!id.startsWith("bot")&&!seen.has(id)){S.remove(av[id].g);delete av[id]}
+botsOn=seen.size===0;bots.forEach(b=>b.a.g.visible=botsOn)}
+function board(){const r=[[me.n+" (tú)",me.k,me.w,me.v]];if(room)for(const p of room.peers())if(!p.sameTab&&p.kind==="viewer"&&typeof p.presence.x==="number")r.push([String(p.presence.n||"?").slice(0,14),p.presence.k|0,p.presence.w|0,p.presence.v|0]);
+r.sort((a,b)=>b[1]-a[1]);if(tbOn)drawT(r);$("sb").replaceChildren(Object.assign(document.createElement("div"),{textContent:"Sala: "+(rname||"–")}),...r.map(x=>{const d=document.createElement("div");d.textContent=x[0]+"  ·  "+x[1]+" bajas · arma "+(x[2]+1);return d}))}
+setInterval(board,500);
+function jump(){if(me.y<=0&&!me.dead)me.vy=7.5}
+const touch="ontouchstart" in window;
+function lock(){if(!touch){try{const p=R.domElement.requestPointerLock();if(p&&p.catch)p.catch(()=>{})}catch(e){}}}
+function show(id){for(const s of document.querySelectorAll(".scr"))s.style.display=s.id===id?"flex":"none";if(id==="m4")renderRooms()}
+document.querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>show(b.dataset.b));
+$("go").onclick=()=>{me.n=($("nm").value.trim()||"Jugador"+(100+Math.floor(Math.random()*900))).slice(0,12);show("m2")};
+$("mc").onclick=()=>show("m3");$("ms").onclick=()=>show("m4");
+function begin(){me.k=0;me.w=0;me.v=0;me.e=100;tired=0;spawn();playing=1;paused=0;$("start").style.display="none";$("pb").style.display=$("tb").style.display="block";lock()}
+async function enter(code,name){if(!lobby){rname="Práctica";begin();return}
+try{room=await lobby.join(code)}catch(e){$("net").textContent="No se pudo entrar a la sala";return}
+rname=name;setupRoom();lobby.presence({rm:code,rn:name}).catch(()=>{});begin()}
+$("mk").onclick=()=>{const n=$("rn").value.trim().slice(0,20)||"Sala de "+me.n;enter("g-"+Math.random().toString(36).slice(2,8),n)};
+function renderRooms(){if($("m4").style.display!=="flex")return;const g={};
+if(lobby)for(const p of lobby.peers()){const q=p.presence;if(p.kind!=="viewer"||typeof q.rm!=="string"||!/^[a-z0-9][a-z0-9_.-]{0,47}$/.test(q.rm))continue;const o=g[q.rm]||(g[q.rm]={n:String(q.rn||"Sala").slice(0,20),c:0});o.c++}
+const ks=Object.keys(g);$("rooms").replaceChildren(...(ks.length?ks.map(k=>{const d=document.createElement("div");d.className="rm";const s=document.createElement("span");s.textContent=g[k].n+" · "+g[k].c+" jugador"+(g[k].c>1?"es":"");const b=document.createElement("button");b.textContent="Unirse";b.onclick=()=>enter(k,g[k].n);d.append(s,b);return d}):[Object.assign(document.createElement("p"),{textContent:lobby?"No hay salas todavía. Crea la primera.":"Sin conexión online"})]))}
+function pause(){if(!playing||paused)return;paused=1;mdown=hold=0;aiming=0;if(document.pointerLockElement)document.exitPointerLock();$("pz").style.display="flex"}
+$("pb").onclick=pause;
+$("rs").onclick=()=>{paused=0;$("pz").style.display="none";lock()};
+async function leave(){playing=0;paused=0;aiming=0;clearInterval(pi);$("pz").style.display="none";$("pb").style.display=$("tb").style.display="none";tabOn(0);if(document.pointerLockElement)document.exitPointerLock();
+const r=room;room=null;if(r)try{await r.leave()}catch(e){}
+if(lobby)lobby.presence({rm:null,rn:null}).catch(()=>{});
+for(const id in av)if(!id.startsWith("bot")){S.remove(av[id].g);delete av[id]}
+botsOn=1;bots.forEach(b=>b.a.g.visible=true);me.k=0;me.w=0;rname="";$("msg").textContent="";$("feed").replaceChildren();$("start").style.display="flex";show("m2")}
+$("lv").onclick=leave;
+$("ab").onclick=()=>{if(!touch&&playing&&!paused)aiming^=1};
+document.addEventListener("pointerlockchange",()=>{if(!document.pointerLockElement&&playing&&!paused&&!touch)pause()});
+addEventListener("keydown",e=>{keys[e.code]=1;if(e.code==="Tab"&&playing){e.preventDefault();tabOn(1)}if(e.code==="Space"){jump();e.preventDefault()}});addEventListener("keyup",e=>{keys[e.code]=0;if(e.code==="Tab")tabOn(0)});
+addEventListener("mousemove",e=>{if(document.pointerLockElement&&!paused){const z=cam.fov/75;me.ry-=e.movementX*.0025*z*sens;me.rx=cl(me.rx-e.movementY*.0025*z*sens)}});
+addEventListener("mousedown",e=>{if(playing&&!paused&&e.target.tagName==="CANVAS"){if(e.button===2){aiming=1;return}mdown=1;if(!document.pointerLockElement&&!("ontouchstart" in window)){try{R.domElement.requestPointerLock()}catch(x){}}fire()}});
+addEventListener("mouseup",e=>{if(e.button===2)aiming=0;else mdown=0});addEventListener("contextmenu",e=>e.preventDefault());
+const T={};let jx=0,jz=0;
+if(touch)$("fb").style.display=$("jb").style.display="flex";$("ab").style.display=$("rb").style.display="flex";
+addEventListener("touchstart",e=>{for(const t of e.changedTouches){const id=t.target.id;if(document.body.classList.contains("ed"))continue;if(id==="rb"){runH=1;continue}if(id==="fb"){hold=1;fire();continue}if(id==="jb"){jump();continue}if(id==="ab"){if(playing&&!paused)aiming^=1;continue}if(t.target.tagName==="BUTTON"||t.target.tagName==="INPUT")continue;T[t.identifier]={x:t.clientX,y:t.clientY,j:t.clientX<innerWidth/2}}});
+addEventListener("touchmove",e=>{if(playing&&!paused)e.preventDefault();for(const t of e.changedTouches){const s=T[t.identifier];if(!s)continue;if(s.j){jx=Math.max(-1,Math.min(1,(t.clientX-s.x)/50));jz=Math.max(-1,Math.min(1,(t.clientY-s.y)/50))}else{me.ry-=(t.clientX-s.x)*.006*(cam.fov/75)*sens;me.rx=cl(me.rx-(t.clientY-s.y)*.006*(cam.fov/75)*sens);s.x=t.clientX;s.y=t.clientY}}},{passive:false});
+addEventListener("touchend",e=>{for(const t of e.changedTouches){const s=T[t.identifier];if(s&&s.j)jx=jz=0;if(t.target.id==="fb")hold=0;if(t.target.id==="rb")runH=0;delete T[t.identifier]}});
+addEventListener("resize",()=>{R.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()});
+let sens=1,pos={},runH=0,tired=0,tbOn=0;const ids=["fb","jb","ab","rb"],ed=()=>document.body.classList.contains("ed");
+try{const c=JSON.parse(localStorage.getItem("ar_cfg")||"{}");if(+c.s)sens=+c.s;if(c.p&&typeof c.p==="object")pos=c.p}catch(e){}
+function save(){try{localStorage.setItem("ar_cfg",JSON.stringify({s:sens,p:pos}))}catch(e){}}
+function applyPos(){for(const i of ids){const e=$(i),p=pos[i];if(Array.isArray(p)){e.style.left=p[0]+"%";e.style.top=p[1]+"%";e.style.right=e.style.bottom="auto"}else e.style.left=e.style.top=e.style.right=e.style.bottom=""}}
+applyPos();$("sn").value=sens;$("sv").textContent=sens.toFixed(2)+"×";
+$("sn").oninput=()=>{sens=+$("sn").value;$("sv").textContent=sens.toFixed(2)+"×";save()};
+document.querySelectorAll(".cfgb").forEach(b=>b.onclick=()=>{$("cf").style.display="flex"});
+$("cx").onclick=()=>{$("cf").style.display="none"};
+$("mv").onclick=()=>document.body.classList.add("ed");
+$("ok").onclick=()=>document.body.classList.remove("ed");
+$("rp").onclick=()=>{pos={};applyPos();save()};
+ids.forEach(i=>{const e=$(i);
+e.addEventListener("pointerdown",ev=>{if(!ed())return;e.setPointerCapture(ev.pointerId);e.dragging=1;ev.preventDefault()});
+e.addEventListener("pointermove",ev=>{if(!e.dragging)return;const w=e.offsetWidth,h=e.offsetHeight,x=Math.max(0,Math.min(innerWidth-w,ev.clientX-w/2)),y=Math.max(0,Math.min(innerHeight-h,ev.clientY-h/2));pos[i]=[+(x/innerWidth*100).toFixed(2),+(y/innerHeight*100).toFixed(2)];applyPos()});
+e.addEventListener("pointerup",()=>{if(e.dragging){e.dragging=0;save()}});e.addEventListener("pointercancel",()=>{e.dragging=0})});
+$("rb").onmousedown=()=>{runH=1};addEventListener("mouseup",()=>{runH=0});
+function tabOn(v){tbOn=v?1:0;$("tt").style.display=v?"flex":"none";if(v)board()}
+$("tb").onclick=()=>tabOn(!tbOn);
+function drawT(r){const t=document.createElement("table");t.innerHTML="<tr><th>#</th><th>Jugador</th><th>Bajas</th><th>Rondas</th><th>Arma</th></tr>";r.forEach((x,i)=>{const tr=t.insertRow();[i+1,x[0],x[1],x[3]|0,(x[2]|0)+1].forEach(v=>{tr.insertCell().textContent=v})});$("tt").replaceChildren(Object.assign(document.createElement("h2"),{textContent:"🏆 Más bajas en toda la partida"}),t)}
+let last=performance.now();
+function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;
+if(!playing)me.ry+=.15*dt;if(playing&&!paused){
+me.ry+=((keys.ArrowLeft?1:0)-(keys.ArrowRight?1:0))*2.2*dt;me.rx=cl(me.rx+((keys.ArrowUp?1:0)-(keys.ArrowDown?1:0))*1.6*dt);
+if(!me.dead){const fw=(keys.KeyW?1:0)-(keys.KeyS?1:0)-jz,st=(keys.KeyD?1:0)-(keys.KeyA?1:0)+jx,mv=Math.abs(fw)+Math.abs(st)>.1,rn=(keys.ShiftLeft||runH)&&mv&&me.e>0&&!tired,sp=(rn?9:6)*dt;
+if(rn){me.e=Math.max(0,me.e-25*dt);if(me.e<=0)tired=1}else{me.e=Math.min(100,me.e+(mv?10:20)*dt);if(tired&&me.e>=25)tired=0}
+me.x+=(-Math.sin(me.ry)*fw+Math.cos(me.ry)*st)*sp;me.z+=(-Math.cos(me.ry)*fw-Math.sin(me.ry)*st)*sp;collide(me);
+me.vy-=20*dt;me.y+=me.vy*dt;if(me.y<0){me.y=0;me.vy=0}
+if((mdown||hold)&&W[me.w].a)fire()}}
+cam.position.set(me.x,me.y+(me.dead?.4:1.6),me.z);cam.rotation.set(me.rx,me.ry,me.dead?.6:0,"YXZ");
+gun.visible=!me.dead;gun.material.color.setHSL(me.w/8,.6,.55);gun.scale.z=.8+me.w*.12;
+const tf=aiming?(W[me.w].n==="Francotirador"?22:45):75;cam.fov+=(tf-cam.fov)*(1-Math.exp(-14*dt));cam.updateProjectionMatrix();
+gun.position.x+=((aiming?0:.25)-gun.position.x)*.25;gun.position.y+=((aiming?-.16:-.22)-gun.position.y)*.25;$("cross").style.transform=aiming?"scale(.5)":"";
+const k=1-Math.exp(-14*dt);
+for(const id in av){const a=av[id];if(a.tx!==undefined){a.g.position.x+=(a.tx-a.g.position.x)*k;a.g.position.y+=(a.ty-a.g.position.y)*k;a.g.position.z+=(a.tz-a.g.position.z)*k}}
+if(botsOn)for(const b of bots){b.t-=dt;if(b.t<=0){b.t=2+Math.random()*3;b.tx=Math.max(-37,Math.min(37,b.x+(Math.random()-.5)*30));b.tz=Math.max(-37,Math.min(37,b.z+(Math.random()-.5)*30))}
+const dx=b.tx-b.x,dz=b.tz-b.z,d=Math.hypot(dx,dz);if(d>.3){b.x+=dx/d*2*dt;b.z+=dz/d*2*dt;collide(b);b.a.g.rotation.y=Math.atan2(-dx,-dz)}b.a.g.position.set(b.x,0,b.z)}
+$("wep").textContent="Arma "+(me.w+1)+"/"+W.length+" · "+W[me.w].n;$("hp").style.width=Math.max(0,me.hp)+"%";$("sp").style.width=me.e+"%";$("sp").style.background=tired?"#f97316":"#38bdf8";
+R.render(S,cam)}
+requestAnimationFrame(loop);
+(async()=>{try{lobby=window.claude?await claude.use("room"):null}catch(e){}
+if(lobby)lobby.onPeers(renderRooms);else $("net").textContent="Sin conexión online: Crear sala abre una partida de práctica contra bots"})();
+</script></body></html>
