@@ -61,6 +61,7 @@ button{background:var(--ac);color:#111;cursor:pointer}
 <p style="font-size:12px">Tab tabla · Mayús / botón CORRER gasta estamina (barra azul) · WASD mover · ratón mirar · clic disparar · Espacio saltar · Mayús correr · flechas para mirar si el ratón no se bloquea. En móvil: joystick izquierdo, arrastra a la derecha para mirar. Apuntar: clic derecho o botón.</p>
 <p id="net" style="font-size:12px"></p></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),V3=THREE.Vector3;
 const W=[{n:"Pistola",d:34,r:380,p:1,s:.005,a:0},{n:"Subfusil",d:12,r:85,p:1,s:.03,a:1},{n:"Escopeta",d:11,r:850,p:8,s:.07,a:0},
@@ -130,15 +131,15 @@ setInterval(board,500);
 function jump(){if(me.y<=0&&!me.dead)me.vy=7.5}
 const touch="ontouchstart" in window;
 function lock(){if(!touch){try{const p=R.domElement.requestPointerLock();if(p&&p.catch)p.catch(()=>{})}catch(e){}}}
-function show(id){for(const s of document.querySelectorAll(".scr"))s.style.display=s.id===id?"flex":"none";if(id==="m4")renderRooms()}
+function show(id){for(const s of document.querySelectorAll(".scr"))s.style.display=s.id===id?"flex":"none";if(id==="m4"){tick();renderRooms()}}
 document.querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>show(b.dataset.b));
 $("go").onclick=()=>{me.n=($("nm").value.trim()||"Jugador"+(100+Math.floor(Math.random()*900))).slice(0,12);show("m2")};
 $("mc").onclick=()=>show("m3");$("ms").onclick=()=>show("m4");
 function begin(){me.k=0;me.w=0;me.v=0;me.e=100;tired=0;spawn();playing=1;paused=0;$("start").style.display="none";$("pb").style.display=$("tb").style.display="block";lock()}
-async function enter(code,name){if(!lobby){rname="Práctica";begin();return}
-try{room=await lobby.join(code)}catch(e){$("net").textContent="No se pudo entrar a la sala";return}
+async function enter(code,name,host){if(!lobby){rname="Práctica";begin();return}
+try{room=await lobby.join(code,host)}catch(e){$("net").textContent="No se pudo entrar a la sala";return}
 rname=name;setupRoom();lobby.presence({rm:code,rn:name}).catch(()=>{});begin()}
-$("mk").onclick=()=>{const n=$("rn").value.trim().slice(0,20)||"Sala de "+me.n;enter("g-"+Math.random().toString(36).slice(2,8),n)};
+$("mk").onclick=()=>{const n=$("rn").value.trim().slice(0,20)||"Sala de "+me.n;enter("g-"+Math.random().toString(36).slice(2,8),n,1)};
 function renderRooms(){if($("m4").style.display!=="flex")return;const g={};
 if(lobby)for(const p of lobby.peers()){const q=p.presence;if(p.kind!=="viewer"||typeof q.rm!=="string"||!/^[a-z0-9][a-z0-9_.-]{0,47}$/.test(q.rm))continue;const o=g[q.rm]||(g[q.rm]={n:String(q.rn||"Sala").slice(0,20),c:0});o.c++}
 const ks=Object.keys(g);$("rooms").replaceChildren(...(ks.length?ks.map(k=>{const d=document.createElement("div");d.className="rm";const s=document.createElement("span");s.textContent=g[k].n+" · "+g[k].c+" jugador"+(g[k].c>1?"es":"");const b=document.createElement("button");b.textContent="Unirse";b.onclick=()=>enter(k,g[k].n);d.append(s,b);return d}):[Object.assign(document.createElement("p"),{textContent:lobby?"No hay salas todavía. Crea la primera.":"Sin conexión online"})]))}
@@ -163,6 +164,47 @@ addEventListener("touchstart",e=>{for(const t of e.changedTouches){const id=t.ta
 addEventListener("touchmove",e=>{if(playing&&!paused)e.preventDefault();for(const t of e.changedTouches){const s=T[t.identifier];if(!s)continue;if(s.j){jx=Math.max(-1,Math.min(1,(t.clientX-s.x)/50));jz=Math.max(-1,Math.min(1,(t.clientY-s.y)/50))}else{me.ry-=(t.clientX-s.x)*.006*(cam.fov/75)*sens;me.rx=cl(me.rx-(t.clientY-s.y)*.006*(cam.fov/75)*sens);s.x=t.clientX;s.y=t.clientY}}},{passive:false});
 addEventListener("touchend",e=>{for(const t of e.changedTouches){const s=T[t.identifier];if(s&&s.j)jx=jz=0;if(t.target.id==="fb")hold=0;if(t.target.id==="rb")runH=0;delete T[t.identifier]}});
 addEventListener("resize",()=>{R.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()});
+const PRE="arma3d-v1-",rooms={};let np=null,hostRoom=null,dirP=null,dirC=null;
+const NET={_l:[],_cb:null,_reg:null,
+peers(){const o=[];for(const [k,n,c] of this._l)for(let i=0;i<c;i++)o.push({kind:"viewer",presence:{rm:k,rn:n}});return o},
+onPeers(f){this._cb=f},
+presence(p){const o=this._reg;this._reg=p.rm&&hostRoom?{code:p.rm,n:p.rn}:null;if(o&&!this._reg){if(dirP)delete rooms[o.code];else if(dirC&&dirC.open)dirC.send({t:"del",code:o.code})}return Promise.resolve()},
+join(code,host){return mkRoom(code,host)}};
+function snap(){const t=Date.now(),o=[];for(const k in rooms)if(t-rooms[k].ts<12e3)o.push([k,rooms[k].n,rooms[k].c]);return o}
+function setL(a){NET._l=a;NET._cb&&NET._cb()}
+function tick(){const r=NET._reg,c=hostRoom?hostRoom.count():0;
+if(dirP){if(r)rooms[r.code]={n:r.n,c,ts:Date.now()};setL(snap())}
+else if(dirC&&dirC.open)dirC.send(r?{t:"reg",code:r.code,n:r.n,c}:{t:"get"})}
+function dirUp(){const p=new Peer(PRE+"dir");
+p.on("open",()=>{dirP=p;dirC=null});
+p.on("connection",c=>c.on("data",m=>{if(m.t==="reg")rooms[m.code]={n:m.n,c:m.c,ts:Date.now()};if(m.t==="del")delete rooms[m.code];c.send({t:"list",r:snap()})}));
+p.on("disconnected",()=>{try{p.reconnect()}catch(e){}});
+p.on("error",e=>{if(e.type==="unavailable-id"){try{p.destroy()}catch(x){}cliUp()}else if(!dirP)setTimeout(dirUp,5000)})}
+function cliUp(){const go=()=>{dirC=np.connect(PRE+"dir",{serialization:"json"});
+dirC.on("data",m=>{if(m.t==="list")setL(m.r)});dirC.on("close",()=>{dirC=null;setTimeout(dirUp,1500)});dirC.on("error",()=>{})};
+if(np.open)go();else np.on("open",go)}
+function mkRoom(code,host){return new Promise((res,rej)=>{
+const hs={},pres={},cs=new Map(),pcb=[];let my={},id,done=0,peer,hc;
+const fire=(t,d)=>(hs[t]||[]).forEach(f=>{try{f({data:d})}catch(e){}}),note=()=>pcb.forEach(f=>{try{f()}catch(e){}}),
+tx=(m,x)=>{for(const c of cs.values())if(c!==x&&c.open)c.send(m)},
+up=m=>{if(hc&&hc.open)hc.send(m)};
+const Rm={peers:()=>Object.keys(pres).map(k=>({peer:k,sameTab:k===id,isMe:k===id,kind:"viewer",guest:false,presence:pres[k]})),
+on:(t,f)=>{(hs[t]=hs[t]||[]).push(f);return()=>{}},onPeers:f=>{pcb.push(f);return()=>{}},
+presence:p=>{for(const k in p){if(p[k]===null)delete my[k];else my[k]=p[k]}pres[id]=my;host?tx({t:"p",id,d:my}):up({t:"p",d:my});note();return Promise.resolve()},
+emit:(t,d)=>{fire(t,d);host?tx({t:"e",topic:t,data:d}):up({t:"e",topic:t,data:d});return Promise.resolve()},
+count:()=>Object.keys(pres).length,
+leave:()=>{done=1;if(hostRoom===Rm)hostRoom=null;try{host?peer.destroy():hc.close()}catch(e){}return Promise.resolve()}};
+if(host){peer=new Peer(PRE+code);
+peer.on("open",i=>{id=i;pres[id]=my;hostRoom=Rm;res(Rm)});peer.on("error",e=>rej(e));
+peer.on("disconnected",()=>{try{peer.reconnect()}catch(e){}});
+peer.on("connection",c=>{c.on("open",()=>{cs.set(c.peer,c);for(const k in pres)c.send({t:"p",id:k,d:pres[k]})});
+c.on("data",m=>{if(m.t==="p"){pres[c.peer]=m.d;tx({t:"p",id:c.peer,d:m.d},c);note()}else if(m.t==="e"){fire(m.topic,m.data);tx({t:"e",topic:m.topic,data:m.data},c)}});
+c.on("close",()=>{cs.delete(c.peer);delete pres[c.peer];tx({t:"x",id:c.peer});note()})})}
+else{if(!np||!np.open)return rej(new Error("sin servidor"));id=np.id;pres[id]=my;
+hc=np.connect(PRE+code,{serialization:"json"});const to=setTimeout(()=>rej(new Error("timeout")),9000);
+hc.on("open",()=>{clearTimeout(to);res(Rm)});
+hc.on("data",m=>{if(m.t==="p")pres[m.id]=m.d;else if(m.t==="x")delete pres[m.id];else if(m.t==="e")fire(m.topic,m.data);note()});
+hc.on("close",()=>{if(!done){banner("El anfitrión cerró la sala");leave()}});hc.on("error",e=>rej(e))}})}
 let sens=1,pos={},runH=0,tired=0,tbOn=0;const ids=["fb","jb","ab","rb"],ed=()=>document.body.classList.contains("ed");
 try{const c=JSON.parse(localStorage.getItem("ar_cfg")||"{}");if(+c.s)sens=+c.s;if(c.p&&typeof c.p==="object")pos=c.p}catch(e){}
 function save(){try{localStorage.setItem("ar_cfg",JSON.stringify({s:sens,p:pos}))}catch(e){}}
@@ -202,6 +244,8 @@ const dx=b.tx-b.x,dz=b.tz-b.z,d=Math.hypot(dx,dz);if(d>.3){b.x+=dx/d*2*dt;b.z+=d
 $("wep").textContent="Arma "+(me.w+1)+"/"+W.length+" · "+W[me.w].n;$("hp").style.width=Math.max(0,me.hp)+"%";$("sp").style.width=me.e+"%";$("sp").style.background=tired?"#f97316":"#38bdf8";
 R.render(S,cam)}
 requestAnimationFrame(loop);
-(async()=>{try{lobby=window.claude?await claude.use("room"):null}catch(e){}
-if(lobby)lobby.onPeers(renderRooms);else $("net").textContent="Sin conexión online: Crear sala abre una partida de práctica contra bots"})();
+(function(){if(typeof Peer==="undefined"){$("net").textContent="Sin conexión online: Crear sala abre una partida de práctica contra bots";return}
+lobby=NET;lobby.onPeers(renderRooms);np=new Peer();
+np.on("error",e=>{if(["network","server-error","socket-error","socket-closed"].includes(e.type))$("net").textContent="Sin conexión al servidor de salas ("+e.type+")"});
+np.on("open",()=>{$("net").textContent="";dirUp()});setInterval(tick,2500)})();
 </script></body></html>
